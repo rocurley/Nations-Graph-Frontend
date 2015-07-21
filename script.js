@@ -33,7 +33,7 @@ function zoom() {
   svg.attr("transform", "translate(" + t + ")scale(" + s + ")");
 }
 
-$.getJSON("nations.js", function(data) {
+$.getJSON("nations.json", function(data) {
   nodesList = [];
   edgesList = [];
   for(var k in data["nodes"]){
@@ -69,6 +69,7 @@ $.getJSON("nations.js", function(data) {
     .append("a")
     .attr("href", function(d) {
         return "http://en.wikipedia.org/wiki/" + d["Nation"]["wikiArticle"]})
+    .attr("target", "_blank")
     .html(function(d) { return d["Nation"]["label"] });
   miniBody
     .append("br")
@@ -85,6 +86,7 @@ $.getJSON("nations.js", function(data) {
     .filter(function(d) { return d["Nation"]["flag"] })
     .append("a")
     .attr("href", function(d) { return d["Nation"]["flag"]["landingURL"]})
+    .attr("target", "_blank")
     .append("img")
     .attr("class", "flag")
     .attr("src", function(d) { return d["Nation"]["flag"]["directURL"] });
