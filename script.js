@@ -9,6 +9,8 @@ var frameWidth = 750,
 
 var zoomMin = 1/80;
 
+var flagShowZoom = 1/8;
+
 zoomBehevior = d3.behavior.zoom().scaleExtent([zoomMin, 1]).scale(zoomMin).on("zoom", zoom);
 
 var svg = d3.select("svg")
@@ -22,6 +24,22 @@ svg.append("rect")
     .attr("width", width)
     .attr("height", height);
 
+var flagsVisible = false;
+
+function hideFlags() {
+  if(flagsVisible){
+    $('.flag').addClass('hidden');
+    flagsVisible = false;
+  }
+}
+
+function showFlags() {
+  if(!flagsVisible){
+    $('.flag').removeClass('hidden');
+    flagsVisible = true;
+  }
+}
+
 function zoom() {
   var t = d3.event.translate,
       s = d3.event.scale;
@@ -29,6 +47,8 @@ function zoom() {
   t[1] = Math.max(frameHeight-height*s, Math.min(t[1],0));
   //t[0] = Math.max(-width * (s - 1), Math.min(t[0], 0));
   //t[1] = Math.max(-height * (s - 1), Math.min(t[1], 0));
+  if(s > flagShowZoom) showFlags();
+  if(s < flagShowZoom) hideFlags();
   zoomBehevior.translate(t);
   svg.attr("transform", "translate(" + t + ")scale(" + s + ")");
 }
@@ -88,7 +108,7 @@ $.getJSON("nations.json", function(data) {
     .attr("href", function(d) { return d["Nation"]["flag"]["landingURL"]})
     .attr("target", "_blank")
     .append("img")
-    .attr("class", "flag")
+    .attr("class", "flag hidden")
     .attr("src", function(d) { return d["Nation"]["flag"]["directURL"] });
 
   svg
