@@ -4,25 +4,39 @@
 var width =  60000,
     height = 40000;
 
-var frameWidth = 750,
-    frameHeight = 500;
+var zoomMax = 80;
 
-var zoomMin = 1/80;
+var flagShowZoom = 10;
 
-var flagShowZoom = 1/8;
-
-zoomBehevior = d3.behavior.zoom().scaleExtent([zoomMin, 1]).scale(zoomMin).on("zoom", zoom);
+zoomBehevior = d3.behavior.zoom().scaleExtent([1, zoomMax]).on("zoom", zoom);
 
 var svg = d3.select("svg")
-    .attr("viewBox", "0 0 " + frameWidth + " " + frameHeight)
+    .attr("viewBox", "0 0 " + width + " " + height)
     .call(zoomBehevior)
   .append("g")//Putting the event handler on the thing being zoomed produces erratic results.
-    .attr("transform", "scale("+zoomMin+")");
+
+
+d3.select("svg").append("rect")
+    .attr("class", "underlay")
+    .attr("fill", "none")
+    .attr("width", width)
+    .attr("height", height);
 
 svg.append("rect")
     .attr("class", "overlay")
     .attr("width", width)
     .attr("height", height);
+
+function debugLine(fill){
+  var line = d3.select("svg")
+    .append("rect")
+    .attr("width", 100000000)
+    .attr("height", 100)
+    .attr("x",0)
+    .attr("y",0)
+    .attr("fill",fill);
+  return function(y){line.attr("y",y)}
+}
 
 var flagsVisible = false;
 
@@ -40,13 +54,51 @@ function showFlags() {
   }
 }
 
+function getMargin(s) {
+  var svgDimensions = $('svg')[0].getBoundingClientRect();
+  var uDimensions = $('svg>.underlay')[0].getBoundingClientRect();
+  pageXMargin = svgDimensions["width"] - uDimensions["width"]
+  pageYMargin = svgDimensions["height"] - uDimensions["height"]
+  if(pageXMargin > pageYMargin){
+    ratio = uDimensions["width"]/width
+    return [pageXMargin/2/ratio,0] // width/2 * (svgDim/gDim - 1)
+  } else {
+    ratio = uDimensions["height"]/height
+    return [0,pageYMargin/2/ratio] // height/2 * (svgDim/gDim - 1)
+  }
+}
+
 function zoom() {
   var t = d3.event.translate,
       s = d3.event.scale;
-  t[0] = Math.max(frameWidth-width*s, Math.min(t[0],0));
-  t[1] = Math.max(frameHeight-height*s, Math.min(t[1],0));
-  //t[0] = Math.max(-width * (s - 1), Math.min(t[0], 0));
-  //t[1] = Math.max(-height * (s - 1), Math.min(t[1], 0));
+  //When zoomed in such that the screen is filled by the image, and that height is the small dimension the
+  //screen is too big in, we want
+  // w <= s*w+t
+  // 0 >= s*0+t
+  // If in svg coordinates the initial margin is m
+  // w+m <= s*w+t
+  // -m >= s*0+t
+  // if we're cramped, set the difference equal on both sides:
+  // w+m+d=sw+t
+  // -m-d = t
+  // w-t = sw +t
+  // t = (1-s)w/2 
+
+  m = getMargin(s);
+  xMin = m[0] + width * (1 - s);
+  xMax = -m[0];
+  if(xMax < xMin)
+    t[0] = (xMax + xMin)/2;
+  else
+    t[0] = Math.min(xMax, Math.max(t[0], xMin));
+  yMin = m[1] + height * (1 - s);
+  yMax = -m[1];
+  if(yMax < yMin){
+    console.log("Clamping t[1] to" + ((yMin+yMax)/2/s));
+    t[1] = (yMax + yMin)/2;
+  }
+  else
+    t[1] = Math.min(yMax, Math.max(t[1], yMin));
   if(s > flagShowZoom) showFlags();
   if(s < flagShowZoom) hideFlags();
   zoomBehevior.translate(t);
@@ -121,7 +173,6 @@ $.getJSON("nations.json", function(data) {
     .attr("d", function(d) {
       var pathD = "";
       var prefix = "M "
-      console.log(d);
       for(i in d){
         pathD = pathD + prefix + (d[i][0]) + " " + (d[i][1])
         prefix = " L "
