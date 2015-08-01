@@ -150,7 +150,7 @@ $.getJSON("nations.json", function(data) {
   }
   svg
     .append("g")
-    .attr("fill", "yellow")
+    .attr("class", "node")
     .selectAll("rect")
     .data(nodesList)
     .enter().append("rect")
