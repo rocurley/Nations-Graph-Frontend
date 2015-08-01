@@ -27,6 +27,19 @@ g {
   pointer-events: all;
 }
 
+.pathStart,.pathEnd {
+  fill: black;
+  cursor: pointer;
+}
+
+.highlighted {
+  stroke: #c06060;
+}
+
+.highlighted .pathStart, .highlighted .pathEnd{
+  fill: #c06060;
+}
+
 .hidden {
   visibility: hidden;
 }

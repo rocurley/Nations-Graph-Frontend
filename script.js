@@ -8,7 +8,7 @@ var zoomMax = 80;
 
 var flagShowZoom = 10;
 
-zoomBehevior = d3.behavior.zoom().scaleExtent([1, zoomMax]).on("zoom", zoom);
+zoomBehevior = d3.behavior.zoom().scaleExtent([1, zoomMax]).on("zoom", zoomHandler);
 
 var svg = d3.select("svg")
     .attr("viewBox", "0 0 " + width + " " + height)
@@ -54,23 +54,51 @@ function showFlags() {
   }
 }
 
-function getMargin(s) {
-  var svgDimensions = $('svg')[0].getBoundingClientRect();
-  var uDimensions = $('svg>.underlay')[0].getBoundingClientRect();
-  pageXMargin = svgDimensions["width"] - uDimensions["width"]
-  pageYMargin = svgDimensions["height"] - uDimensions["height"]
+function coordinateSystemStuff(){
+  var out = {};
+  out.svgDimensions = $('svg')[0].getBoundingClientRect();
+  out.uDimensions = $('svg>.underlay')[0].getBoundingClientRect();
+  pageXMargin = out.svgDimensions["width"] - out.uDimensions["width"]
+  pageYMargin = out.svgDimensions["height"] - out.uDimensions["height"]
   if(pageXMargin > pageYMargin){
-    ratio = uDimensions["width"]/width
-    return [pageXMargin/2/ratio,0] // width/2 * (svgDim/gDim - 1)
+    out.svgToHtmlRatio = out.uDimensions["width"]/width;
+    out.margin = [pageXMargin/2/out.svgToHtmlRatio, 0] // width/2 * (svgDim/gDim - 1)
   } else {
-    ratio = uDimensions["height"]/height
-    return [0,pageYMargin/2/ratio] // height/2 * (svgDim/gDim - 1)
+    out.svgToHtmlRatio = out.uDimensions["height"]/height;
+    out.margin = [0, pageYMargin/2/out.svgToHtmlRatio] // height/2 * (svgDim/gDim - 1)
   }
+  out.svgToHtml = function(r) {
+    x = r[0];
+    y = r[1];
+    return [svgToHtmlRatio*x + pageXMargin/2, svgToHtmlRatio*y + pageYMargin/2];
+  }
+  return out;
 }
 
-function zoom() {
-  var t = d3.event.translate,
-      s = d3.event.scale;
+function zoomToNode(id) {
+  var target = $("#"+id)[0];
+  console.log(target);
+  zoomTo(target.x.baseVal.value+target.width.baseVal.value/2,
+         target.y.baseVal.value+target.height.baseVal.value/2);
+}
+
+function zoomTo(xPos,yPos) {
+  //The input is in g coordinates
+  var cSStuff = coordinateSystemStuff();
+  var windowX = cSStuff.uDimensions.width  / cSStuff.svgToHtmlRatio;
+  var windowY = cSStuff.uDimensions.height / cSStuff.svgToHtmlRatio;
+  var s = zoomBehevior.scale();
+  var t = [windowX/2 - xPos*s, windowY/2 - yPos*s];
+  console.log([windowX,windowY,s,t[0],t[1]]);
+
+  zoom(t,s);
+}
+
+function zoomHandler() {
+  zoom(d3.event.translate, d3.event.scale);
+}
+
+function zoom(t,s) {
   //When zoomed in such that the screen is filled by the image, and that height is the small dimension the
   //screen is too big in, we want
   // w <= s*w+t
@@ -82,9 +110,9 @@ function zoom() {
   // w+m+d=sw+t
   // -m-d = t
   // w-t = sw +t
-  // t = (1-s)w/2 
+  // t = (1-s)w/2
 
-  m = getMargin(s);
+  var m = coordinateSystemStuff().margin;
   xMin = m[0] + width * (1 - s);
   xMax = -m[0];
   if(xMax < xMin)
@@ -105,6 +133,8 @@ function zoom() {
   svg.attr("transform", "translate(" + t + ")scale(" + s + ")");
 }
 
+var highlighted;
+
 $.getJSON("nations.json", function(data) {
   nodesList = [];
   edgesList = [];
@@ -114,7 +144,9 @@ $.getJSON("nations.json", function(data) {
     nodesList.push(node);
   }
   for(var k in data["edges"]){
-    edgesList.push(data["edges"][k]);
+    var path = data["edges"][k];
+    var nodes = k.replace('(', "").replace(')', "").split(",").map(Number)
+    edgesList.push({path : path, start : nodes[0], end : nodes[1]});
   }
   svg
     .append("g")
@@ -125,7 +157,8 @@ $.getJSON("nations.json", function(data) {
     .attr("x", function(d) { return d["Geometry"]["x"]} )
     .attr("y", function(d) { return d["Geometry"]["y"]} )
     .attr("width", function(d) { return d["Geometry"]["w"]} )
-    .attr("height", function(d) { return d["Geometry"]["h"]} );
+    .attr("height", function(d) { return d["Geometry"]["h"]} )
+    .attr("id", function(d) { return d["id"]});
   var miniBody = svg
     .append("g")
     .selectAll("foreignObject")
@@ -163,20 +196,63 @@ $.getJSON("nations.json", function(data) {
     .attr("class", "flag hidden")
     .attr("src", function(d) { return d["Nation"]["flag"]["directURL"] });
 
-  svg
+  edges = svg
     .append("g")
     .attr("fill", "none")
     .attr("stroke", "black")
-    .selectAll("path")
+    .attr("stroke-width", "4")
+    .selectAll("g")
     .data(edgesList)
-    .enter().append("path")
+    .enter()
+    .append("g");
+  edges
+    .append("path")
     .attr("d", function(d) {
       var pathD = "";
       var prefix = "M "
-      for(i in d){
-        pathD = pathD + prefix + (d[i][0]) + " " + (d[i][1])
+      for(i in d["path"]){
+        pathD = pathD + prefix + (d["path"][i][0]) + " " + (d["path"][i][1])
         prefix = " L "
       }
       return pathD;
+    });
+  edges
+    .append("circle")
+    .attr("cx", function(d) {
+      return d["path"][0][0];
+    })
+    .attr("cy", function(d) {
+      return d["path"][0][1];
+    })
+    .attr("r", "5")
+    .attr("class", "pathStart")
+    .on("click", function(d){
+      if(highlighted){
+        highlighted.classList.remove("highlighted");
+      }
+      highlighted = this.parentNode;
+      highlighted.classList.add("highlighted");
+      zoomToNode(d["end"]);
+    });
+  edges
+    .append("path")
+    .attr("d", "M 0 0 l 5 -10 h -10 z")
+    .attr("transform", function(d){
+      var end = d.path[d.path.length-1];
+      var dx = end[0] - d.path[d.path.length-2][0];
+      var dy = end[1] - d.path[d.path.length-2][1];
+      var rotation = dx+dy>0 ?
+                            (dx-dy>0 ? 270 :   0) :
+                            (dx-dy>0 ? 180 :  90)
+      return ("translate("+end[0]+", "+end[1]+") rotate("+rotation+")");
+    })
+    .attr("class", "pathEnd")
+    .on("click", function(d){
+      if(highlighted){
+        highlighted.classList.remove("highlighted");
+      }
+      highlighted = this.parentNode;
+      highlighted.classList.add("highlighted");
+      zoomToNode(d["start"]);
     });
   });
