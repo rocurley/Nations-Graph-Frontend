@@ -1,6 +1,3 @@
-//TODO: Set width and height by percentage, then set use viewbox to set it to be the size of the
-//whole image, and allow zooming in.
-
 var width =  60000,
     height = 40000;
 
@@ -122,7 +119,6 @@ function zoom(t,s) {
   yMin = m[1] + height * (1 - s);
   yMax = -m[1];
   if(yMax < yMin){
-    console.log("Clamping t[1] to" + ((yMin+yMax)/2/s));
     t[1] = (yMax + yMin)/2;
   }
   else
@@ -134,6 +130,15 @@ function zoom(t,s) {
 }
 
 var highlighted;
+var search = {};
+
+function highlight(target){
+  if(highlighted){
+    highlighted.classList.remove("highlighted");
+  }
+  highlighted = target;
+  highlighted.classList.add("highlighted");
+}
 
 $.getJSON("nations.json", function(data) {
   nodesList = [];
@@ -148,6 +153,65 @@ $.getJSON("nations.json", function(data) {
     var nodes = k.replace('(', "").replace(')', "").split(",").map(Number)
     edgesList.push({path : path, start : nodes[0], end : nodes[1]});
   }
+
+  search.source = function (query, process) {
+    console.log("Starting source");
+    console.log(query);
+    query = escapeRegExp(query);
+    var searchRegex = new RegExp(query, 'i');
+    var goodRegex = new RegExp("^" + query, 'i');
+    var mehRegex = new RegExp(query, 'i');
+    matches = [[],[],[],[]]
+    nodesList.forEach(function(node){
+      if(goodRegex.test(node.Nation.label))
+        matches[0].push(node);
+      else if(goodRegex.test(node.Nation.wikiArticle))
+        matches[1].push(node);
+      else if(mehRegex.test(node.Nation.label))
+        matches[2].push(node);
+      else if(mehRegex.test(node.Nation.wikiArticle))
+        matches[3].push(node);
+    });
+    out = [].concat.apply([],matches)//.map(function(node){return node.Nation.label});
+    console.log(out);
+    process(out);
+  }
+  search.display = function(node){
+    return node.Nation.label;
+  }
+  search.name = "nations";
+  search.limit = 100;
+  search.templates = {};
+  search.templates.suggestion = function(node){
+    imageStr = node.Nation.flag ? '<img class="previewFlag" src="' + node.Nation.flag.directURL +'"></img>' : '';
+    yearStr = '(' + (node.Nation.startYear ? node.Nation.startYear : '???') + ' to ' + (node.Nation.endYear ? node.Nation.endYear : '???') + ')';
+    html = '<div>'+ imageStr +'<strong>' + node.Nation.label + '</strong><br/>' + yearStr + '</div>';
+    return html;
+  }
+  $('#header .typeahead').typeahead({
+      hint: true,
+      //highlight: true,
+      minLength: 1
+    },
+    search
+    ).on('typeahead:select', function(ev,node){
+      console.log("SELECT");
+      console.log(node);
+      zoomToNode(node.id);
+      highlight(document.getElementById(node.id));
+    })
+  $('#search input').keypress(function(ev){
+    if(ev.which == 13){
+      searchQuery = $('#search .tt-input').val();
+      console.log("SUBMIT");
+      search.source(searchQuery, function(suggestions){
+        console.log(suggestions[0]);
+        zoomToNode(suggestions[0].id);
+        highlight(document.getElementById(suggestions[0].id));
+      });
+    }
+  });
+
   svg
     .append("g")
     .attr("class", "node")
@@ -227,11 +291,7 @@ $.getJSON("nations.json", function(data) {
     .attr("r", "5")
     .attr("class", "pathStart")
     .on("click", function(d){
-      if(highlighted){
-        highlighted.classList.remove("highlighted");
-      }
-      highlighted = this.parentNode;
-      highlighted.classList.add("highlighted");
+      highlight(this.parentNode);
       zoomToNode(d["end"]);
     });
   edges
@@ -248,11 +308,11 @@ $.getJSON("nations.json", function(data) {
     })
     .attr("class", "pathEnd")
     .on("click", function(d){
-      if(highlighted){
-        highlighted.classList.remove("highlighted");
-      }
-      highlighted = this.parentNode;
-      highlighted.classList.add("highlighted");
+      highlight(this.parentNode);
       zoomToNode(d["start"]);
     });
   });
+
+function escapeRegExp(str) {
+  return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+}

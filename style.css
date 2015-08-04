@@ -8,20 +8,53 @@ html, body
 #content
 {
   position: absolute;
-  top: 0;
+  top: 50px;
   right: 0;
   bottom: 0;
   left: 0;
-  padding-top: 75px;
 }
+
 #header
 {
   background-color: #FFA000;
-  height: 75px;
+  height: 50px;
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+#title {
+  margin: auto 10px;
+}
+
+#search{
+  margin: auto 10px;
+  flex-grow: 1;
+  max-width: 500px;
+}
+
+.tt-menu {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.twitter-typeahead, .tt-menu, .tt-hint, .tt-input {
+  width: 100%;
+  max-width: 500px;
+}
+
+.tt-dataset-nations {
+  border: 1px solid black;
+}
+
+.tt-dataset-nations .tt-suggestion {
+  min-height: 50px;
+  background-color: #FFC107;
+  border: 1px solid black;
 }
 
 #mainSvg
@@ -42,12 +75,18 @@ g {
   max-height: 100px;
 }
 
+.previewFlag{
+  float: right;
+  max-width: 90px;
+  max-height: 50px;
+}
+
 .node {
   fill: #FFC107;
 }
 
 .overlay {
-  fill: #FFFFFF;
+  fill: #808080;
   pointer-events: all;
 }
 
@@ -62,6 +101,12 @@ g {
 
 .highlighted .pathStart, .highlighted .pathEnd{
   fill: #536DFE;
+}
+
+rect.highlighted {
+  stroke: #536DFE;
+  stroke-width: 10;
+  stroke-alignment: outer;
 }
 
 .hidden {
