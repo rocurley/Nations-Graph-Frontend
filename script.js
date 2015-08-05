@@ -1,7 +1,7 @@
 var width =  60000,
     height = 40000;
 
-var zoomMax = 80;
+var zoomMax = 160;
 
 var flagShowZoom = 10;
 
