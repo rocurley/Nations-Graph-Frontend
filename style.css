@@ -20,7 +20,7 @@ body
   flex-basis: auto;
 }
 
-#header
+#header, #footer
 {
   background-color: #FFA000;
   display: flex;
