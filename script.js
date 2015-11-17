@@ -5,6 +5,8 @@ var zoomMax = 160;
 
 var flagShowZoom = 10;
 
+var searchZoom = 60;
+
 zoomBehevior = d3.behavior.zoom().scaleExtent([1, zoomMax]).on("zoom", zoomHandler);
 
 var svg = d3.select("svg")
@@ -76,18 +78,18 @@ function zoomToNode(id) {
   var target = $("#"+id)[0];
   console.log(target);
   zoomTo(target.x.baseVal.value+target.width.baseVal.value/2,
-         target.y.baseVal.value+target.height.baseVal.value/2);
+         target.y.baseVal.value+target.height.baseVal.value/2,
+         Math.max(zoomBehevior.scale(),searchZoom));
 }
 
-function zoomTo(xPos,yPos) {
+function zoomTo(xPos,yPos, s = zoomBehevior.scale()) {
   //The input is in g coordinates
   var cSStuff = coordinateSystemStuff();
   var windowX = cSStuff.uDimensions.width  / cSStuff.svgToHtmlRatio;
   var windowY = cSStuff.uDimensions.height / cSStuff.svgToHtmlRatio;
-  var s = zoomBehevior.scale();
   var t = [windowX/2 - xPos*s, windowY/2 - yPos*s];
+  zoomBehevior.scale(s);
   console.log([windowX,windowY,s,t[0],t[1]]);
-
   zoom(t,s);
 }
 
